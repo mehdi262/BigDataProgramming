@@ -1,0 +1,43 @@
+Assignment 5, Mehdi Nikkhah
+==============================================================================================
+1-
+step-1. The file read command, loads only "subreddit" and " score" fields. using "FileScan json"
+step-2. Calculates the partial average  using hash aggregate based on the subreddit field using HashAggregate. this step works like a combiner.
+step-3. Exchange the value to calculate the final average using the Exchange hashpartitioning() command. this command do shuffle the values. this step works like shuffle and reduce.
+
+2-
+
+		MapReduce(Java)	CPython and RDD		CPython and DataFrame		PyPy and RDD		Pypy and DataFrame
+Real Time	2m56.069s	2m41.946s		1m27.675s			1m33.533s		1m28.502s
+
+Due to the distribution overhead over the MapReduce cluster, the Java code's execution time was large (almost close to RDD with CPython).
+The difference of running same RDD code using CPython and PyPy was about 1 minute which is large. As discussed previously Pypy works like compiler so it is faster the Cpython which is an interpretor.
+But the difference is not considerable for DataFrame in both  CPython and Pypy (about one second).
+Because, spark uses the schema for the DataFrames. As result the execution time decreases. even when there is even a simple grouping and aggregation operations, DataFrame win the competition over the RDD.
+
+
+3-
+Based on the following observation, the breadcast join reduce the execution time significantly
+Dataset: pagecounts-3 (cluster)
+
+		broadcast Join	*	detection of broadcast	*	real time
+----------------------------------------------------------------------------------------
+1		No manual	*	default automatic	* 	2m21.815s
+----------------------------------------------------------------------------------------
+2		No manual	*	changed			*	2m49.983s
+----------------------------------------------------------------------------------------
+3		Yes (hint)	*	N/P			*	1m28.182s	
+----------------------------------------------------------------------------------------
+
+
+4-
+Based on the plan.explain(), the broadcast join used the broadcast hash join, but the simple join used the sort-merge join.
+Broadcast hash join: There is a condition to use this which is one of the join parties must be small enough to be loaded in the executers' memories. 
+So, in this join, the small dataset is sent to each executer's memory to avoid shuffling and preform a faster join on each partition of the large dataset on each executer.  
+Simple Join: using this algorithm first it sort both datasets and then merge them. sorting and merging are more time consuming rather than previous method. Because in this case the data must be shuffled which is expensive.
+
+
+5-
+I prefer to use SQL. Because it is more felexibile and provide same result in less code and struggling. But in comparision, the Python API code is more structured and more readable. 
+The Sql commands are mostly long and hard to read, distinguish and debug. but these codes are more flexible.
+As far as I studied their performance are not that much different.

@@ -1,0 +1,65 @@
+Name: Mehdi Nikkhah
+Course: Big Data Programming Lab 1
+Assignment 7:
+
+-------------------------------------------------------------------------------------------------------------------------
+Question 1) What happened when you inserted another row with the same primary key as an existing row?
+
+Answer 1: New reocord over wrote the previouse record. Which means that the primary key is unique over the table.
+-------------------------------------------------------------------------------------------------------------------------
+Question 2) What happened when you query a keyspace with replication factor 1 and one node down? How did it behave with replication factor 2 and a node down?
+
+Answer 2: 
+Replication=1 and One Node down: 
+		I tried couple of queries, but some of them return Error. For example for th follwing queries the error messages are shown:
+		---Query: SELECT * FROM test;  Error: "Unable to complete the operation against any hosts'
+		---Query: SELECT * FROM test WHERE id=3;  Error: "Unable to complete the operation against any hosts'
+		---Query: SELECT * FROM test WHERE id=4;  Rrturned result.
+		--- Analysisfor those data that are stored on the unreliable node, the 
+Replication=2 and One Node down:
+		I tried couple of queries eben thhose that did not work in the previouse scenario, and all of them returned the correct answer. 
+		--- Analysis: Data are xtored at least in two replicas ann in the case that the unreliable node (199.60.17.136) is off Cassandra can provide data from other nodes (replicas).
+-----------------------------------------------------------------------------------------------------------------------
+Question 3) How did the consistency level affect the results with the node up/down?
+
+
+Answer3:
+CONSISTENCY ONE and Replication is 2 and one node is down: 
+		---The "Insert" and "Select" queries both worked properly: reason is that finding only one replica is acceptable.
+CONSISTENCY ONE and Replication is 2 and one node is UP:
+		---The "Insert" and "Select" queries both worked properly: reason is that finding only one replica is acceptable.
+
+CONSISTANCY ALL and Replication is 2 and one node is down:
+		---Some of "Insert" commands returned error and some other did not.
+		---Select * From test, returned error.
+		---Select * From test WHERE id=1, worked.
+		---Other Select commands returned error.
+		---Analisys: in this case those commands that can find all replicas (2 replicas) on the other nodes rather than the down one work properly. but the rest did not , because the consistancy is "ALL", which means all replicas must be same but some of them tthat are stored on the down node are not accessible.
+CONSISTANCY ALL and Replication is 2 and one node is down:
+		---All of the commands worked fine.
+-----------------------------------------------------------------------------------------------------------------------
+Question 4) Which of the WHERE id=? values returned successfully with CONSISTENCY ALL when one of the nodes was down? Why do you think some could be returned but not others?
+
+Answer 4:
+		--- id equal to one. reason is that none of this id's replicas are stored on the down Node.
+-----------------------------------------------------------------------------------------------------------------------
+Question 5) What was the CREATE TABLE statement you used for the nasalogs table? What was the primary key you choose, and why?
+
+Answer 5:
+CREATE TABLE nasalogs(
+            ... host TEXT,
+            ... datetime TIMESTAMP,
+            ... path TEXT,
+            ... bytes INT,
+            ... id UUID,
+            ... PRIMARY KEY (host , id)
+            ... );
+--I used the host as the first part of the primary key. This way all records of the same host will be store on the same partition. and the aggregation which is based on the host will be faster.
+--as second element of the primary key I used a UUID to make the record unique.
+-----------------------------------------------------------------------------------------------------------------------
+Question 6) What was the CQL query you used (or tried) to get the total number of bytes?
+
+Answer 6:
+SELECT sum(bytes)  FROM nasalogs;
+
+

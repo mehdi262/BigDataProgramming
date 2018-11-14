@@ -1,0 +1,68 @@
+Q_1: 
+What did you see in the execution plan for the “join in Spark” solution? Why was the execution so fast (and the memory usage so small)?
+A_1:
+The optimizer actually push the process at very early stage so that it only reads the data for the provided orderkey. The data frames we have read are small and only contain the data for the orderkey which is provided as an input. We can observe PushFilters as early as at the stage 1 in the execution plan below. 
+
+== Physical Plan ==
+*(4) Sort [orderkey#0 ASC NULLS FIRST], true, 0
++- Exchange rangepartitioning(orderkey#0 ASC NULLS FIRST, 200)
+   +- ObjectHashAggregate(keys=[orderkey#0, totalprice#8], functions=[collect_set(name#23, 0, 0)])
+      +- Exchange hashpartitioning(orderkey#0, totalprice#8, 200)
+         +- ObjectHashAggregate(keys=[orderkey#0, totalprice#8], functions=[partial_collect_set(name#23, 0, 0)])
+            +- *(3) Project [orderkey#0, totalprice#8, name#23]
+               +- *(3) BroadcastHashJoin [partkey#43], [partkey#18], Inner, BuildRight
+                  :- *(3) Project [orderkey#0, totalprice#8, partkey#43]
+                  :  +- *(3) BroadcastHashJoin [orderkey#0], [orderkey#37], Inner, BuildLeft
+                  :     :- BroadcastExchange HashedRelationBroadcastMode(List(cast(input[0, int, false] as bigint)))
+                  :     :  +- *(1) Filter isnotnull(orderkey#0)
+                  :     :     +- *(1) Scan org.apache.spark.sql.cassandra.CassandraSourceRelation@266a0cb7 [orderkey#0,totalprice#8] PushedFilters: [*In(orderkey, [151201,986499,28710,193734,810689]), IsNotNull(orderkey)], ReadSchema: struct<orderkey:int,totalprice:decimal(38,18)>
+                  :     +- *(3) Filter (isnotnull(orderkey#37) && isnotnull(partkey#43))
+                  :        +- *(3) Scan org.apache.spark.sql.cassandra.CassandraSourceRelation@5a18bb45 [orderkey#37,partkey#43] PushedFilters: [IsNotNull(orderkey), *In(orderkey, [151201,986499,28710,193734,810689]), IsNotNull(partkey)], ReadSchema: struct<orderkey:int,partkey:int>
+                  +- BroadcastExchange HashedRelationBroadcastMode(List(cast(input[0, int, false] as bigint)))
+                     +- *(2) Filter isnotnull(partkey#18)
+                        +- *(2) Scan org.apache.spark.sql.cassandra.CassandraSourceRelation@2fe086fb [partkey#18,name#23] PushedFilters: [IsNotNull(partkey)], ReadSchema: struct<partkey:int,name:string>
+
+
+
+Q_2:
+What was the CREATE TABLE statement you used for the orders_parts table?
+A_2:
+
+
+CREATE TABLE order_parts(
+clerk TEXT,
+comment TEXT,
+custkey INT,
+order_priority TEXT,
+orderdate DATE,
+orderkey INT,
+orderstatus TEXT,
+ship_priority INT,
+totalprice DECIMAL,
+part_names set<text>,
+PRIMARY KEY (orderkey)
+); 
+
+
+Q_3:
+What were the running times of the two tpch_orders_* programs on the tpch2 data on the cluster? These orderkeys have results in that data set: 2745315 12904674 5431585 31750567 16572929 28762529.
+A_3:
+time spark-submit --packages datastax:spark-cassandra-connector:2.3.1-s_2.11 tpch_orders_df.py tpch2 output-2 2745315 12904674 5431585 31750567 16572929 2876252
+
+real	1m10.331s
+user	0m46.896s
+sys	0m3.024s
+
+time spark-submit --packages datastax:spark-cassandra-connector:2.3.1-s_2.11 tpch_orders_denorm.py jqazi output-1 2745315 12904674 5431585 31750567 16572929 28762529
+
+real	0m40.075s
+user	0m33.604s
+sys	0m2.100s
+
+
+Q_4:
+Consider the logic that you would have to implement to maintain the denormalized data (assuming that the orders table had the part_names column in the main data set). Write a few sentences on what you'd have to do when inserting/updating/deleting data in this case.
+A_4:
+If the orders table in original database is update, it will not have any effect on the denormalized data and we need to update it either manually or need to do modifications in the code so that whenever there is any insertion/update/deletion in the original tables, the denormalized data in the order_parts table gets updated.  
+
+

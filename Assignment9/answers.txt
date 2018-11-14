@@ -1,0 +1,99 @@
+Assignment 9                     Mehdi Nikkhah
+------------------------------------------------------------------------------------------------------		
+1- What is your best guess for the slope and intercept of the streaming points being produced?
+
+Batch: 13
+-------------------------------------------
++------------------+------------------+
+|             slope|         intercept|
++------------------+------------------+
+|-51.34984245525918|35.076911620422834|
++------------------+------------------+
+Batch: 52
+-------------------------------------------
++------------------+-----------------+
+|             slope|        intercept|
++------------------+-----------------+
+|-51.34467263575416|46.09248323483416|
++------------------+-----------------+
+Batch: 102
+-------------------------------------------
++-------------------+------------------+
+|              slope|         intercept|
++-------------------+------------------+
+|-51.342971092226676|46.310918932450704|
++-------------------+------------------+
+
+
+Batch: 440
+-------------------------------------------
++------------------+-----------------+
+|             slope|        intercept|
++------------------+-----------------+
+|-51.34099657360077|46.43509921558973|
++------------------+-----------------+
+
+------------------------------------------------------------------------------------------------------		
+2-Is your streaming program's estimate of the slope and intercept getting better as the program runs? (That is: is the 
+program aggregating all of the data from the start of time, or only those that have arrived since the last output?)
+The slope changed slightly, but the intercept convergence is more visible. As it started from 35 and converged to 46.43509921558973. During the intercept convergence, some fluctuation was seen.
+------------------------------------------------------------------------------------------------------		
+3-In the colour classification question, what were your validation scores for the RGB and LAB pipelines?
+
+Validation score for RGB model: 0.654191
+Validation score for LAB model: 0.725355
+------------------------------------------------------------------------------------------------------		
+4-When predicting the tmax values, did you over-fit the training data (and for which training/validation sets)?
+There is no overfitting seen.
+Overfitting means the test dataset evaluation score differs a lot from the validation dataset evaluation score. In the below 
+result, trained models based on both datasets (tmax1 and tmax2) validation and test evaluation scores are same.
+tmax1:
+	validation:
+		r2 = 0.9961551784416567
+		rmse = 0.7724888073019657
+	test:
+		r2 = 0.9776648713612646
+		rmse = 1.938502834270807
+tmax2:
+	validation:
+		r2 = 0.9947289338550624
+		rmse = 0.9397075271906192
+	test:
+		r2 = 0.9914290582747757
+		rmse = 1.200843695685373
+------------------------------------------------------------------------------------------------------		
+5-What were your testing scores for your model with and without the “yesterday's temperature” feature?
+
+test without yesterday (on tmax1):
+	r2 = 0.32524683184680747
+	rmse = 10.654784676502597
+with yesterday (on tmax1):
+	r2 = 0.8027412299292707
+	rmse = 5.7420969269708495
+------------------------------------------------------------------------------------------------------		
+6-If you're using a tree-based model, you'll find a .featureImportances property that describes the relative importance 
+    of each feature (code commented out in weather_test.py; if not, skip this question). Have a look with and without 
+    the “yesterday's temperature” feature: do the results make sense and suggest that your model is making decisions 
+    reasonably? With “yesterday's temperature”, is it just predicting “same as yesterday”?
+
+I used the GBTRegressor and it supports the ".featureImportances" property. Running the weather_test.py, the following result achieved. It seems there is no such big difference in both results.
+unless the importance of the previous_tmax is the second important column (feature) in the prediction. 
+Wherein the version without yesterday_tmax, the tmax feature take place and is more important.
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	Running the weather_test.py With yesterday_tmax:
+        	These results include the r2 and RMSE in a very high value. This means the model predicts the test dataset in an acceptable and high accuracy.
+
+            	The feature Importance returned 6 column as ["latitude", "longitude", "elevation","day","tmax","yesterday_tmax"] which has the highest value for tmax, yesteday_tmax, and day columns.
+
+            	these columns are most important and had more effect on our model.
+r2 = 0.980685060984766
+rmse = 1.7967970641248325
+(6,[0,1,2,3,4,5],[0.09964646423501679,0.06745881691532295,0.06590647403339758,0.22094495072487166,0.3203520243918184,0.22569126969957265])
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	Running the weather_test.py without yesterday_tmax:
+		These results are simular to the previous part decribed results. The only different is that, it includes only 5 columns and ["latitude", "longitude", "elevation","day","tmax"].
+		As it does not have the yesterday_tmax feature, it depends more on tmax column.
+r2 = 0.9776648713612646
+rmse = 1.938502834270807
+(5,[0,1,2,3,4],[0.10340251465118372,0.08507748029151622,0.0630004704395321,0.27289705672467685,0.475622477893091])
+

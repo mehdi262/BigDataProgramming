@@ -1,0 +1,71 @@
+Assignment 8                                                         Mehddi Nikkhah:
+
+
+QUestion1)
+PushedFilters in early stages  filtered the data based on the orderkeys that is sent to it. The optimizer did so to reduce size of the returned data, because our sent data to filter was small.
+== Physical Plan ==
+*(4) Sort [orderkey#0 ASC NULLS FIRST], true, 0
++- Exchange rangepartitioning(orderkey#0 ASC NULLS FIRST, 200)
+   +- ObjectHashAggregate(keys=[orderkey#0, totalprice#8], functions=[collect_set(name#23, 0, 0)])
+      +- Exchange hashpartitioning(orderkey#0, totalprice#8, 200)
+         +- ObjectHashAggregate(keys=[orderkey#0, totalprice#8], functions=[partial_collect_set(name#23, 0, 0)])
+            +- *(3) Project [orderkey#0, totalprice#8, name#23]
+               +- *(3) BroadcastHashJoin [partkey#43], [partkey#18], Inner, BuildRight
+                  :- *(3) Project [orderkey#0, totalprice#8, partkey#43]
+                  :  +- *(3) BroadcastHashJoin [orderkey#0], [orderkey#37], Inner, BuildLeft
+                  :     :- BroadcastExchange HashedRelationBroadcastMode(List(cast(input[0, int, false] as bigint)))
+                  :     :  +- *(1) Filter isnotnull(orderkey#0)
+                  :     :     +- *(1) Scan org.apache.spark.sql.cassandra.CassandraSourceRelation@7b45f391 [orderkey#0,totalprice#8] PushedFilters: [*In(orderkey, [151201,986499,28710,193734,810689]), IsNotNull(orderkey)], ReadSchema: struct<orderkey:int,totalprice:decimal(38,18)>
+                  :     +- *(3) Filter (isnotnull(orderkey#37) && isnotnull(partkey#43))
+                  :        +- *(3) Scan org.apache.spark.sql.cassandra.CassandraSourceRelation@e96a937 [orderkey#37,partkey#43] PushedFilters: [*In(orderkey, [151201,986499,28710,193734,810689]), IsNotNull(orderkey), IsNotNull(partkey)], ReadSchema: struct<orderkey:int,partkey:int>
+                  +- BroadcastExchange HashedRelationBroadcastMode(List(cast(input[0, int, false] as bigint)))
+                     +- *(2) Filter isnotnull(partkey#18)
+                        +- *(2) Scan org.apache.spark.sql.cassandra.CassandraSourceRelation@dccb578 [partkey#18,name#23] PushedFilters: [IsNotNull(partkey)], ReadSchema: struct<partkey:int,name:string>
+
+
+Question2)
+CREATE TABLE orders_parts (
+            ...   orderkey int,
+            ...   custkey int,
+            ...   orderstatus text,
+            ...   totalprice decimal,
+            ...   orderdate date,
+            ...   order_priority text,
+            ...   clerk text,
+            ...   ship_priority int,
+            ...   comment text,
+            ... part_names set<text>,
+            ... PRIMARY KEY (orderkey)
+            ... );
+
+Question3)
+tpch_orders_df.py:
+real    1m5.805s
+user    0m44.924s
+sys     0m3.204s
+	
+
+tpch_orders_denorm.py:
+real    0m44.759s
+user    0m35.640s
+sys     0m2.748s
+
+
+
+Question4)
+In this case any insert delete, and update actions in the Orders, lineitem, and part tables might cause some actions on the other tables as described below:
+(in all below scenario I assumed user might insert, update and delte directtly into the orders without doing the required action on the related part and lineitem)
+
+Insert: 
+	to parts: No effect on others.
+	to lineitem: This will effect orders, part.name must be added to the related record part_set in the order table. If the parts are new then those must be added as well in the parrt table.
+	to orders: This will effect prat table (if the parts names are new. So, must be inserted into the par table as well). it also effects the lineitem. one or more record must be inserted.
+Update:
+	to parts: If part.name of any part get updated, then must find the related orders through lineitem and update the part name in the set (which is huge job). If update is on other  fields rather than part.name, no effect.
+	to lineitem: If the partkey get updated, then the related oreder record must find through the orderkey and the part name set must get uppdated accordingly.If update is on other  fields rather than lineitem.partkey, no effect.
+	to orders: If the parts names set get updated then the all related lineitem must get updated. It might effect prat table (if the part names has updated . If update is on other  fields rather than order.part_name_set, no effect.
+
+Delete:
+	to parts: If a part is deleted all related lineitem record must be found (through its key) and must be deleted. Consequently, part's name must be removed from all orders. it might even cause to delete an order record as well.
+	to lineitem: Deletion of a lineitem, cause to remove the part name from order record. So, first must find the partkey from lineitem table and then find the part's name. After that must remove that name from the order's part_name_set.
+	to orders: Delition of an order record, will cause deletion of all related lineitems. But has no effect on the part table.

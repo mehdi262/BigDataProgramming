@@ -1,0 +1,5 @@
+*.csv
+/datasets
+/outputs
+/metastore_db
+/spark-warehouse/*
